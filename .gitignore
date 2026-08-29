@@ -1,0 +1,78 @@
+# ==============================================================================
+# Python Bytecode & Cache
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.nox/
+.tox/
+
+# ==============================================================================
+# Distribution & Build Artifacts
+# ==============================================================================
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ==============================================================================
+# Virtual Environments (Local Development)
+# ==============================================================================
+.venv/
+venv/
+ENV/
+env/
+pythonenv*/
+
+# ==============================================================================
+# Package Managers & Lock Files (Library vs Application Nuance)
+# ==============================================================================
+# For Python *libraries*, you generally want to track lock files so contributors 
+# and CI build with identical environments. Uncomment these only if you prefer 
+# strict separation where local env states are entirely ignored.
+# poetry.lock
+# pdm.lock
+# Pipfile.lock
+# uv.lock
+
+# ==============================================================================
+# Environment Variables & Secrets (Never Commit These)
+# ==============================================================================
+.env
+.env.local
+.env.*.local
+*.secret
+*.pem
+*.key
+
+# ==============================================================================
+# IDEs, Editors & OS Metadata
+# ==============================================================================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+.DS_Store
+Thumbs.db

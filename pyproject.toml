@@ -1,0 +1,23 @@
+[project]
+name = "curbside"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "sayantan-synup", email = "sayantan.ghosh@synup.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "langchain-ollama>=1.1.0",
+    "langgraph>=1.2.11",
+    "langgraph-checkpoint-sqlite>=3.1.1",
+    "numpy>=2.5.2",
+    "pydantic>=2.13.5",
+]
+
+[project.scripts]
+curbside = "curbside:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
