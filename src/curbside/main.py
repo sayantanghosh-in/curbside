@@ -2,7 +2,7 @@ from typing import Literal
 from uuid import uuid4, UUID
 from langgraph.graph import StateGraph, START, END
 # local imports
-from curbside.game.core.nodes import close_shop, open_shop, show_all_commands
+from curbside.game.core.nodes import check_inventory, close_shop, open_shop, show_all_commands, order_inventory
 from curbside.state import GameState
 from curbside.utils.constants import BASE_GAME_STATE, INVALID_USER_COMMAND
 from curbside.utils.helpers import clear_terminal, draw_intro_screen
@@ -13,28 +13,29 @@ def load_game(state: GameState) -> GameState:
     print("\nFound a saved game. Resuming...")
     return state
 
-# @TODO - node to start a new game
-def new_game(state: GameState) -> UUID:
-    """This node starts a new game session, creates a new UUID for the game state."""
-    print("\nNo saved game found. Starting new game...")
-    game_uuid = uuid4()
-    state["id"] = game_uuid
-    return game_uuid
-
 # main game node
 def game(state: GameState) -> GameState:
-    """main game node that displays the intro message and handles the initial user command inuts"""
+    """main game node that displays the intro message and handles the initial user command /. This node initializes the game."""
     # clear the screen
     clear_terminal()
     # game started, show the intro screen
     draw_intro_screen()
+    input()
+    # @TODO - for now, treat everything as a new game. load game coming soon
+    game_uuid = uuid4()
+    state["id"] = game_uuid
+    return state
+
+# command handler node
+def game_commands_handler(state: GameState) -> GameState:
+    """command handler node that handles the user commands after the game is initialized"""
     user_input = input("> ")
     if user_input and isinstance(state["user_inputs"], list):
         state['user_inputs'].append(user_input)
     return state
 
 # main game router
-def main_game_router(state: GameState) -> Literal['open', 'close', 'commands']:
+def main_game_router(state: GameState) -> Literal['check', 'open', 'close', 'commands', 'order']:
     """
     - This router function checks the entered user command.
     - If valid, it routes to a correct node.
@@ -44,10 +45,14 @@ def main_game_router(state: GameState) -> Literal['open', 'close', 'commands']:
         last_user_input = state['user_inputs'][-1]
         if last_user_input == '/open':
             return 'open'
+        elif last_user_input == '/check':
+            return 'check'
         elif last_user_input == '/close':
             return 'close'
         elif last_user_input == '/commands':
             return 'commands'
+        elif last_user_input == '/order':
+            return 'order'
     print(INVALID_USER_COMMAND)
     return 'commands'
 
@@ -56,28 +61,41 @@ def main_game_router(state: GameState) -> Literal['open', 'close', 'commands']:
 main_game_graph = StateGraph(GameState)
 
 # add the nodes to the graph
-main_game_graph.add_node("main_game_node", game)
+main_game_graph.add_node("main_game", game)
+main_game_graph.add_node("game_commands", game_commands_handler)
+main_game_graph.add_node("check_inventory", check_inventory)
 main_game_graph.add_node("close_shop", close_shop)
 main_game_graph.add_node("open_shop", open_shop)
 main_game_graph.add_node("show_all_commands", show_all_commands)
+main_game_graph.add_node("order_inventory", order_inventory)
 
 # add the edges to the graph
-main_game_graph.add_edge(START, "main_game_node")
+main_game_graph.add_edge(START, "main_game")
+main_game_graph.add_edge("main_game", "show_all_commands")
 main_game_graph.add_conditional_edges(
-    "main_game_node",
+    "game_commands",
     main_game_router,
     {
         # edge: node
         "close": "close_shop",
         "open": "open_shop",
-        "commands": "show_all_commands"
+        "commands": "show_all_commands",
+        "check": "check_inventory",
+        "order": "order_inventory"
     }
 )
+# @TODO - temporarily route the following nodes to the END node
+main_game_graph.add_edge("check_inventory", "game_commands")
+main_game_graph.add_edge("order_inventory", "game_commands")
+
+# deterministic - route the following nodes to the END
 main_game_graph.add_edge("close_shop", END)
+
 # @TODO - temporarily route the open_shop node to the END node
 main_game_graph.add_edge("open_shop", END)
-# after showing the command, go back to the main game node
-main_game_graph.add_edge("show_all_commands", "main_game_node")
+
+# deterministic - route the following nodes to the game_commands
+main_game_graph.add_edge("show_all_commands", "game_commands")
 
 # compile the graph
 app = main_game_graph.compile()

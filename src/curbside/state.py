@@ -5,7 +5,7 @@ class FoodComponent(TypedDict):
     name: str
     remaining_units: int
     cost_price_per_unit: int
-    min_purchasable_quantity: int
+    min_order_quantity: int
     is_spicy: bool
     is_allergen: bool
 

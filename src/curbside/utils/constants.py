@@ -17,7 +17,9 @@ Please show some love ❤️ by starring ⭐️ this project on Github.
 
 a food truck sim, run by a model on your machine.
 open the window. take the orders. don't run out of cheese.
-lunch rush, locally hosted"""
+lunch rush, locally hosted.
+
+Press [ENTER] to START"""
 
 SAVED_STATE_PRESENT = """
 It seems you have a saved game.
@@ -65,7 +67,7 @@ BASE_GAME_STATE: GameState = {
 # Pantry
 #
 # cost_price_per_unit      what you pay to restock one unit
-# min_purchasable_quantity restocking buys at least this many (you buy in packs)
+# min_order_quantity restocking buys at least this many (you buy in packs)
 # is_allergen              flags the "no allergens" customer quirk
 # is_spicy                 flags the "nothing spicy" customer quirk
 # ---------------------------------------------------------------------------
@@ -75,7 +77,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "tortilla",
         "remaining_units": 18,
         "cost_price_per_unit": 1,
-        "min_purchasable_quantity": 12,
+        "min_order_quantity": 12,
         "is_spicy": False,
         "is_allergen": False,
     },
@@ -83,7 +85,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "rice",
         "remaining_units": 10,
         "cost_price_per_unit": 1,
-        "min_purchasable_quantity": 10,
+        "min_order_quantity": 10,
         "is_spicy": False,
         "is_allergen": False,
     },
@@ -91,7 +93,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "beans",
         "remaining_units": 12,
         "cost_price_per_unit": 1,
-        "min_purchasable_quantity": 10,
+        "min_order_quantity": 10,
         "is_spicy": False,
         "is_allergen": False,
     },
@@ -99,7 +101,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "veggies",
         "remaining_units": 12,
         "cost_price_per_unit": 1,
-        "min_purchasable_quantity": 10,
+        "min_order_quantity": 10,
         "is_spicy": False,
         "is_allergen": False,
     },
@@ -107,7 +109,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "chicken",
         "remaining_units": 9,
         "cost_price_per_unit": 3,
-        "min_purchasable_quantity": 6,
+        "min_order_quantity": 6,
         "is_spicy": False,
         "is_allergen": False,
     },
@@ -115,7 +117,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "cheese",
         "remaining_units": 6,
         "cost_price_per_unit": 2,
-        "min_purchasable_quantity": 8,
+        "min_order_quantity": 8,
         "is_spicy": False,
         "is_allergen": True,
     },
@@ -123,7 +125,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "sour cream",
         "remaining_units": 7,
         "cost_price_per_unit": 2,
-        "min_purchasable_quantity": 6,
+        "min_order_quantity": 6,
         "is_spicy": False,
         "is_allergen": True,
     },
@@ -131,7 +133,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "tofu",
         "remaining_units": 8,
         "cost_price_per_unit": 2,
-        "min_purchasable_quantity": 6,
+        "min_order_quantity": 6,
         "is_spicy": False,
         "is_allergen": True,
     },
@@ -139,7 +141,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "peanut sauce",
         "remaining_units": 4,
         "cost_price_per_unit": 3,
-        "min_purchasable_quantity": 4,
+        "min_order_quantity": 4,
         "is_spicy": False,
         "is_allergen": True,
     },
@@ -147,7 +149,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "guacamole",
         "remaining_units": 6,
         "cost_price_per_unit": 3,
-        "min_purchasable_quantity": 4,
+        "min_order_quantity": 4,
         "is_spicy": False,
         "is_allergen": False,
     },
@@ -155,7 +157,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "salsa",
         "remaining_units": 8,
         "cost_price_per_unit": 1,
-        "min_purchasable_quantity": 6,
+        "min_order_quantity": 6,
         "is_spicy": True,
         "is_allergen": False,
     },
@@ -163,7 +165,7 @@ STARTING_INVENTORY: dict[str, FoodComponent] = {
         "name": "jalapeno",
         "remaining_units": 5,
         "cost_price_per_unit": 1,
-        "min_purchasable_quantity": 6,
+        "min_order_quantity": 6,
         "is_spicy": True,
         "is_allergen": False,
     },
