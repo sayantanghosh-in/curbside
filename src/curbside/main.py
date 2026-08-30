@@ -1,10 +1,12 @@
 from typing import Literal
 from uuid import uuid4, UUID
 from langgraph.graph import StateGraph, START, END
+import copy
 # local imports
-from curbside.game.core.nodes import check_inventory, close_shop, open_shop, show_all_commands, order_inventory
+from curbside.game.core.graphs.open import open_shop_subgraph
+from curbside.game.core.nodes import check_inventory, close_shop, show_all_commands, order_inventory
 from curbside.state import GameState
-from curbside.utils.constants import BASE_GAME_STATE, INVALID_USER_COMMAND
+from curbside.utils.constants import BASE_GAME_STATE, INVALID_USER_COMMAND, MENU, STARTING_INVENTORY, STARTING_MONEY
 from curbside.utils.helpers import clear_terminal, draw_intro_screen
 
 # @TODO - node to load the saved game
@@ -22,8 +24,10 @@ def game(state: GameState) -> GameState:
     draw_intro_screen()
     input()
     # @TODO - for now, treat everything as a new game. load game coming soon
-    game_uuid = uuid4()
-    state["id"] = game_uuid
+    state["id"] = uuid4()
+    state["menu"] = MENU
+    state["inventory"] = copy.deepcopy(STARTING_INVENTORY)
+    state["money"] = STARTING_MONEY
     return state
 
 # command handler node
@@ -65,7 +69,7 @@ main_game_graph.add_node("main_game", game)
 main_game_graph.add_node("game_commands", game_commands_handler)
 main_game_graph.add_node("check_inventory", check_inventory)
 main_game_graph.add_node("close_shop", close_shop)
-main_game_graph.add_node("open_shop", open_shop)
+main_game_graph.add_node("open_shop", open_shop_subgraph)
 main_game_graph.add_node("show_all_commands", show_all_commands)
 main_game_graph.add_node("order_inventory", order_inventory)
 

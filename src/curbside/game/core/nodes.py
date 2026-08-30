@@ -1,23 +1,6 @@
 # local imports
 from curbside.state import GameState
-from curbside.utils.constants import CLOSE_SHOP_MESSAGE, SUPPORTED_COMMANDS, NO_SAVED_GAME, STAR_FILLED
-
-#  node to handle the open shop function
-def open_shop(state: GameState) -> GameState:
-    """
-    This node is responsible to handle all the logic related to opening the shop.
-    - It displays the current game state
-    - A subgraph originates from this node that handles the full shop loop
-    """
-
-    # check if the game save state is valid
-    if state['id']:
-        customers_ratio = f"{state['total_customers_served']}/{state['total_customers_arrived']}"
-        reputation = f"{STAR_FILLED} {state['reputation']}"
-        print(f"{customers_ratio} --- {reputation}")
-    else:
-        print(NO_SAVED_GAME)
-    return state
+from curbside.utils.constants import CLOSE_SHOP_MESSAGE, SUPPORTED_COMMANDS, STAR_FILLED
 
 # node to show all commands that are supported in the game
 def show_all_commands(state: GameState) -> GameState:

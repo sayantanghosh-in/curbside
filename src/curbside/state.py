@@ -18,6 +18,12 @@ class MenuItem(TypedDict):
     price: int
     ingredients: Sequence[Ingredient]
 
+class FoodOrder(TypedDict):
+    id: UUID
+    food_items: Sequence[str] # MenuItem name
+    number_of_served_items: int
+    total_number_of_items: int
+
 class GameState(TypedDict):
     id: Optional[UUID] # uuid - later on, can be used to differentiate between multiple saved states
     money: Optional[int]
@@ -28,3 +34,4 @@ class GameState(TypedDict):
     total_customers_served: Optional[int]
     total_penalties: Optional[int] # total amount of money deducted for any reason
     user_inputs: Optional[Sequence[str]]
+    food_orders: Optional[Sequence[FoodOrder]]

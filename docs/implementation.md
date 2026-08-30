@@ -9,25 +9,86 @@ contracts, not implementations — the code is yours to write.
 
 ## Where things stand
 
-**Done**
-- Module layout: `state.py`, `utils/constants.py`, `utils/helpers.py`, `main.py`
-- Type model settled — `FoodComponent`, `Ingredient`, `MenuItem`, `GameState`
-- Intro screen and copy constants
-- `STARTING_INVENTORY` (12 components) and `MENU` (9 dishes), validated: every
-  ingredient reference resolves and every margin is positive
+**Phase 1 complete — the game runs end to end with zero AI.**
 
-**Next — Phase 1, still stdlib only**
-1. `can_make(item, inventory) -> bool` — one line now that inventory is a dict
-2. `serve(item, state) -> bool`
-3. `generate_order() -> dict`
-4. `phrase_order(order) -> str` — hardcoded f-string, the LLM replaces this later
-5. the `while True` loop
+- Type model settled: `FoodComponent`, `Ingredient`, `MenuItem`, `FoodOrder`, `GameState`
+- `STARTING_INVENTORY` (12 components) and `MENU` (9 dishes), validated
+- `can_make`, `serve`, `generate_order` — verified against multi-item, partial-fulfilment,
+  and unknown-dish cases
+- Main graph: intro → commands → deterministic router → 5 branches
+- `open_shop` compiled subgraph, attached as a node (shared `GameState`, so no mapping)
+- Verified: serving a chicken quesadilla moves tortilla 18→17, chicken 9→8, cheese 6→4
+
+### Current graph
+
+```mermaid
+flowchart TD
+    S([START]) --> MG["main_game<br/>intro · new game · seed menu, inventory, money"]
+    MG --> SAC["show_all_commands"]
+    SAC --> GC["game_commands · input()"]
+    GC --> R{"main_game_router"}
+
+    R -->|"/check"| CI["check_inventory"]
+    R -->|"/order"| OI["order_inventory<br/>TODO — restock flow"]
+    R -->|"/commands"| SAC
+    R -->|"/close"| CS["close_shop"]
+    R -->|"/open"| SHOP
+
+    CI --> GC
+    OI --> GC
+    CS --> E([END])
+
+    subgraph SHOP ["open_shop · compiled subgraph"]
+        OSM["open_shop_main<br/>generate_order · print it"]
+        AW["await_user_input · input()"]
+        SR{"handle_user_input"}
+        CHK["open_shop_check"]
+        SRV["serve_food → serve()"]
+        CLO["open_shop_close"]
+        CUS["handle_custom_user_input<br/>⟵ the LLM goes here"]
+
+        OSM --> AW --> SR
+        SR -->|"/check"| CHK
+        SR -->|"/serve"| SRV
+        SR -->|"/close"| CLO
+        SR -->|"free text"| CUS
+        CHK --> AW
+        SRV --> OSM
+    end
+
+    SHOP --> E
+
+    classDef code fill:#E4EFF5,stroke:#2E6F8E,color:#16202C
+    classDef ai fill:#FBEDE0,stroke:#B4682A,stroke-width:2px,stroke-dasharray:4 3,color:#3A2718
+    classDef todo fill:#F2F0EC,stroke:#9A9186,stroke-dasharray:4 3,color:#3A3630
+
+    class MG,SAC,GC,R,CI,CS,OSM,AW,SR,CHK,SRV,CLO code
+    class CUS ai
+    class OI todo
+```
+
+The two loops inside the subgraph are deliberately different: `check → await` keeps the
+same customer waiting, `serve → open_shop_main` brings the next one.
+
+**Next — Phase 2: `handle_custom_user_input`**
+
+The only node that touches a model. One narrow job:
+
+```python
+class PlayerAction(BaseModel):
+    action: Literal["serve", "check", "close"]
+```
+
+`temperature=0`. Given the customer's order and the player's free text, classify into one
+of three. Then route to the same three nodes the slash commands already reach.
 
 **Loose ends**
-- `new_game` is annotated `-> UUID`; nodes must return state. Fix when wiring the graph.
-- `GameState` still needs `reputation`, `day`, `served`, `is_open`, and
-  `current_customer`. Reputation is what makes the customer quirks bite, and `is_open` /
-  `current_customer` gate the `/close` and `/order` commands.
+- `handle_custom_user_input → END` means any free text currently exits the shop
+- `open_shop → END` in the main graph; probably should return to `game_commands`
+- `reputation` is never updated — always prints 0.00
+- `total_customers_served` increments unconditionally, so the ratio is always N/N
+- `load_game` is defined but unused; there is no save/load yet
+- `order_inventory` is still a stub
 
 ---
 

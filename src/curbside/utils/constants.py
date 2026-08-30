@@ -59,7 +59,13 @@ BASE_GAME_STATE: GameState = {
     "total_customers_arrived": 0,
     "total_customers_served": 0,
     "total_penalties": 0,
-    "user_inputs": []
+    "user_inputs": [],
+    "food_orders": []
+}
+
+APP_ERRORS: dict[str, str] = {
+    "ORDER_CREATION_FAILED": "ERROR:ORDER_CREATION_FAILED",
+    "MALFORMED_STATE": "ERROR:MALFORMED_STATE"
 }
 
 
