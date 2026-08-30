@@ -1,4 +1,4 @@
-from typing import Sequence, TypedDict
+from typing import Sequence, TypedDict, Optional
 from uuid import UUID
 
 class FoodComponent(TypedDict):
@@ -19,7 +19,12 @@ class MenuItem(TypedDict):
     ingredients: Sequence[Ingredient]
 
 class GameState(TypedDict):
-    id: UUID # uuid - later on, can be used to differentiate between multiple saved states
-    money: int
-    inventory: dict[str, FoodComponent] # {name: component}
-    menu: Sequence[MenuItem]
+    id: Optional[UUID] # uuid - later on, can be used to differentiate between multiple saved states
+    money: Optional[int]
+    inventory: Optional[dict[str, FoodComponent]] # {name: component}
+    menu: Optional[Sequence[MenuItem]]
+    reputation: Optional[float] # the star rating
+    total_customers_arrived: Optional[int]
+    total_customers_served: Optional[int]
+    total_penalties: Optional[int] # total amount of money deducted for any reason
+    user_inputs: Optional[Sequence[str]]

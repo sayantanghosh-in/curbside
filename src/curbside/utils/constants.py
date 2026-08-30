@@ -1,4 +1,4 @@
-from curbside.state import FoodComponent, MenuItem
+from curbside.state import GameState, FoodComponent, MenuItem
 
 CURBSIDE_ASCII_LOGO = """
 ██████ ██  ██ ██████  ██████  ██████ ██ ██████  ██████
@@ -20,19 +20,45 @@ open the window. take the orders. don't run out of cheese.
 lunch rush, locally hosted"""
 
 SAVED_STATE_PRESENT = """
+It seems you have a saved game.
+Type: `/` [press Enter] to start a new game or `/commands` [press ENTER] for the list of supported commands in game."""
 
-"""
+SAVED_STATE_ABSENT_INTRO = """
+Tip: Have a natural conversation with your customers.
+Type: `/` [press Enter] to start a new game or `/commands` [press ENTER] for the list of supported commands in game."""
 
-SAVED_STATE_ABSENT = """
-New here? Just talk to them. "sure", "coming right up",
-"we're out of chicken — want a quesadilla instead?"
-Always works: menu · stock · help · save · quit"""
+NO_SAVED_GAME = """
+Could not find a saved game... Taking you back to the main menu."""
 
-STAR_FILLED = "★"
-STAR_OUTLINE = "☆"
+INVALID_USER_COMMAND = """
+You entered an invalid command."""
+
+STAR_FILLED = "⭐️"
+STAR_OUTLINE = "✩"
 
 MAX_REPUTATION = 5
 STARTING_MONEY = 340
+
+SUPPORTED_COMMANDS = """
+Here's a list of supported commands:
+
+/commands - shows the list of all supported commands in the game
+/open - Opens the shop and starts the game"""
+
+CLOSE_SHOP_MESSAGE = """
+Bye, see you again!"""
+
+BASE_GAME_STATE: GameState = {
+    "id": None,
+    "inventory": None,
+    "menu": [],
+    "money": 0,
+    "reputation": 0,
+    "total_customers_arrived": 0,
+    "total_customers_served": 0,
+    "total_penalties": 0,
+    "user_inputs": []
+}
 
 
 # ---------------------------------------------------------------------------

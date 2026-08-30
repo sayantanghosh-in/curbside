@@ -25,8 +25,9 @@ contracts, not implementations — the code is yours to write.
 
 **Loose ends**
 - `new_game` is annotated `-> UUID`; nodes must return state. Fix when wiring the graph.
-- `GameState` has no `reputation`, `day`, or `served` yet. Reputation is what makes the
-  customer quirks bite.
+- `GameState` still needs `reputation`, `day`, `served`, `is_open`, and
+  `current_customer`. Reputation is what makes the customer quirks bite, and `is_open` /
+  `current_customer` gate the `/close` and `/order` commands.
 
 ---
 
@@ -197,6 +198,160 @@ ChatOllama(model="qwen2.5:7b", temperature=0.0, num_ctx=8192)   # parsing
 
 ---
 
+## Multi-agent design
+
+### The patterns
+
+| Pattern | What it is | When to use it |
+|---|---|---|
+| **Router** | one decision, no loop | the decision is cheap and one-shot |
+| **Subagent** | a graph used as a node, with its own prompt, tools, context | you want **context isolation** — it does messy work, returns a summary |
+| **Supervisor** | an orchestrator LLM repeatedly picks which specialist runs | several specialists, one coordinator, clear termination |
+| **Handoff** | agent A transfers control to B via `Command(goto=...)` | staged workflows where control genuinely moves |
+| **Hierarchical** | supervisors of supervisors | large systems; not this one |
+| **Network** | every agent can call every other | avoid — chaotic and expensive |
+
+**The point of a subagent is context isolation, not capability.** It can burn ten tool
+calls internally and hand back three lines; the parent never sees the mess. Same
+context-budget principle as progressive disclosure.
+
+### When something deserves to be an agent
+
+- Needs a **persona** that would conflict with the parent's → agent
+- Needs its own **multi-turn tool loop** → agent
+- Its intermediate work would **pollute the parent's context** → subagent
+- Otherwise → a node, or just a tool
+
+### The three agents in Curbside
+
+| Agent | Verdict | Notes |
+|---|---|---|
+| **Customer** | genuinely an agent | persona, multi-turn. Knows the **menu**, deliberately *not* the stock — a customer reads the board, not your fridge. If they only ordered what you can make, the "we're out of chicken, want a quesadilla?" mechanic disappears entirely |
+| **Restock** | thin — really a tool | arithmetic. Agent-shaped only for conversational ordering ("enough for 20 burritos"). Built as an agent to exercise the pattern; say so out loud |
+| **Menu invention** | genuinely an agent, most interesting | constrained creativity: must use stocked ingredients, must price above cost, must return a valid `MenuItem` |
+
+### Routing: deterministic first, LLM only where ambiguous
+
+```
+slash command  →  Python router          /open /close /check /order
+free text      →  LLM router             reply to the customer, or something else?
+```
+
+**Do not route slash commands through an LLM.** `/check` is unambiguous — spending two
+seconds and a token bill for a model to re-derive what `if cmd == "/check"` already knows
+is how agent systems become slow and expensive for no gain.
+
+Using a supervisor *only* where routing is genuinely ambiguous is the defensible design.
+Most tutorials put the supervisor at the front door and pay a model call on every input.
+
+### The whole flow
+
+```mermaid
+flowchart TD
+    IN([player types something])
+    IN --> DR{"deterministic router<br/>Python · does it start with / ?"}
+
+    DR -->|"/open"| OPEN["open shop · code"]
+    DR -->|"/check"| CHECK["show inventory · code"]
+    DR -->|"/close"| CW{"customer waiting?"}
+    DR -->|"/order"| RESTOCK
+    DR -->|"/invent"| INVENT
+    DR -->|"free text"| SUP{"LLM ROUTER — the supervisor<br/>is this a reply to the customer?"}
+
+    CW -->|no| CLOSED["close shop · code"]
+    CW -->|yes| CONF["interrupt · are you sure?<br/>−1★ · −$100"]
+    CONF --> CLOSED
+
+    SUP -->|"reply"| CUSTOMER
+    SUP -->|"off-topic"| GUARD["guardrail · redirect"]
+
+    subgraph CUSTOMER ["CUSTOMER AGENT · subgraph"]
+        C1["phrase order · temp 0.7<br/>knows the MENU, not the stock"]
+        C2["parse player reply · temp 0.0"]
+        C3["resolve · Python<br/>stock · money · quirk check"]
+        C4["react in character"]
+        C1 --> C2 --> C3 --> C4
+    end
+
+    subgraph RESTOCK ["RESTOCK AGENT · subgraph"]
+        R1["parse what's needed"]
+        R2["tools · price_lookup · check_stock"]
+        R3["interrupt · confirm the spend"]
+        R4["apply to inventory"]
+        R1 --> R2 --> R3 --> R4
+    end
+
+    subgraph INVENT ["MENU AGENT · subgraph"]
+        I1["read pantry"]
+        I2["RAG over recipes"]
+        I3["propose MenuItem · structured output"]
+        I4["validate · price must exceed cost"]
+        I1 --> I2 --> I3 --> I4
+    end
+
+    OPEN --> IDLE
+    CHECK --> IDLE
+    CLOSED --> IDLE
+    GUARD --> IDLE
+    C4 --> IDLE
+    R4 --> IDLE
+    I4 --> IDLE
+
+    IDLE(["idle window · one action<br/>next customer prefetched in background"]) --> IN
+
+    classDef code fill:#E4EFF5,stroke:#2E6F8E,color:#16202C
+    classDef ai fill:#FBEDE0,stroke:#B4682A,stroke-width:2px,color:#3A2718
+
+    class DR,OPEN,CHECK,CW,CONF,CLOSED,GUARD,C3,R3,R4,I4,IDLE code
+    class SUP,C1,C2,C4,R1,R2,I2,I3 ai
+```
+
+Blue is your code, amber is a model call. The supervisor is one small amber diamond on a
+single branch — everything with a `/` never touches a model.
+
+---
+
+## Commands and the shift loop
+
+| Command | When | Effect |
+|---|---|---|
+| `/open` | shop closed | start the shift; customers begin arriving |
+| `/close` | shop open | end the shift. If a customer is waiting → **`interrupt()`** to confirm; confirming costs −1 star and −$100 |
+| `/check` | any time | show inventory. Free, no time cost |
+| `/order` | idle window only, never mid-customer | restock conversation with the restock agent |
+
+### Turn structure
+
+- **One customer at a time.** No queue in v1 — the next customer is only generated after
+  the current one is resolved.
+- **An idle window between customers.** The player gets one action: `/order`, `/check`,
+  or continue. Miss it and you wait for the next gap.
+- **`/order` pauses the shift.** No customer is generated while a restock conversation is
+  in progress.
+
+### Two implementation notes
+
+**Prefetch the next customer.** Generation takes 2–4s on a 7B. Generate it in a background
+thread *during* the idle window and reveal it when the window closes, so the latency hides
+inside a wait the player was already having.
+
+**Keep the idle window turn-based in v1.** `input()` blocks, so a live countdown needs
+threading plus non-blocking stdin — real complexity that teaches nothing about agents.
+One action per gap preserves the mechanic. Swapping in a real clock later is a contained
+change to one function.
+
+### State this needs
+
+```python
+is_open: bool
+current_customer: dict | None
+reputation: int
+day: int
+served: int
+```
+
+---
+
 ## Phase 3 — into LangGraph
 
 **Goal:** same game, wired as a graph. Logic unchanged.
@@ -323,3 +478,27 @@ Any of these is a complete, demoable thing:
 - **After Phase 6** — the full agent stack minus retrieval
 
 Later phases add coverage, not correctness. A finished Phase 4 beats a half-built Phase 7.
+
+---
+
+## Learning resources
+
+**Multi-agent / supervisor / subagents**
+- [End-to-End Multi-Agent System: LangGraph, MCP, Supervisor, Guardrails & HITL](https://www.youtube.com/watch?v=BM39OouLNsM)
+  — supervisor, guardrails, and HITL together. Closest match to the phases left here.
+- [LangGraph Supervisor Agent walkthrough](https://www.youtube.com/watch?v=HonlBK19F1o)
+  — tighter, supervisor pattern only.
+- [Build a personal assistant with subagents](https://docs.langchain.com/oss/python/langchain/multi-agent/subagents-personal-assistant)
+  — official, and better than any video for subagents specifically.
+- [`langgraph-supervisor-py`](https://github.com/langchain-ai/langgraph-supervisor-py)
+  — the prebuilt. Hand-rolling one router function will teach you more.
+
+**Core LangGraph**
+- Docs — https://docs.langchain.com/oss/python/learn
+- API reference — https://reference.langchain.com/
+- Persistence / checkpointers — https://docs.langchain.com/oss/python/langgraph/persistence
+- LangChain Academy, free, modules 0–5 — https://github.com/langchain-ai/langchain-academy
+
+**Tools**
+- Ollama — https://ollama.com
+- Pydantic — https://docs.pydantic.dev/
